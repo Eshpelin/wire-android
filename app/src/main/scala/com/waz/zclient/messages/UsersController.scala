@@ -18,15 +18,18 @@
 package com.waz.zclient.messages
 
 import android.content.Context
-import com.waz.api.impl.AccentColor
+import com.waz.api.impl.{AccentColor, Availability}
 import com.waz.model.ConversationData.ConversationType
 import com.waz.model._
 import com.waz.service.ZMessaging
+import com.waz.threading.Threading
 import com.waz.utils.events.Signal
 import com.waz.zclient.messages.UsersController.DisplayName
 import com.waz.zclient.messages.UsersController.DisplayName.{Me, Other}
 import com.waz.zclient.utils.ContextUtils._
 import com.waz.zclient.{Injectable, Injector, R}
+
+import scala.concurrent.Future
 
 class UsersController(implicit injector: Injector, context: Context) extends Injectable {
 
@@ -61,6 +64,23 @@ class UsersController(implicit injector: Injector, context: Context) extends Inj
     if (zms.selfUserId == id) Signal const Me
     else zms.users.userSignal(id).map(u => Other(u.getDisplayName))
   }
+
+  lazy val myAvailability: Signal[Availability] = for {
+    selfId <- selfUserId
+    userData <- user(selfId)
+  } yield userData.availability
+
+  // the checks here ensure that Availability will be other than None only when both the current user and the other user belong to teams
+  def availability(otherUserId: UserId): Signal[Availability] = for {
+    selfId <- selfUserId
+    self <- user(selfId)
+    otherUser <- if (self.teamId.nonEmpty) user(otherUserId).map(Option(_)) else Signal.const(Option.empty[UserData])
+  } yield
+    if (otherUser.exists(_.teamId.nonEmpty)) otherUser.fold[Availability](Availability.None)(_.availability)
+    else Availability.None
+
+  def updateAvailability(availability: Availability): Future[Option[UserData]] =
+    zMessaging.head.flatMap { _.users.updateAvailability(availability) }(Threading.Background)
 
   def accentColor(id: UserId): Signal[AccentColor] = user(id).map(u => AccentColor(u.accent))
 
@@ -111,4 +131,5 @@ object UsersController {
     case object Me extends DisplayName
     case class Other(name: String) extends DisplayName
   }
+
 }

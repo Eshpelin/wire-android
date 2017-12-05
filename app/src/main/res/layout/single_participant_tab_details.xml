@@ -29,6 +29,7 @@
         tools:ignore="UselessParent">
 
         <FrameLayout
+            android:id="@+id/fl_participant_layout"
             android:layout_width="@dimen/profile__image__width"
             android:layout_height="@dimen/profile__image__height"
             >
@@ -54,7 +55,18 @@
 
         </FrameLayout>
 
+        <com.waz.zclient.views.AvailabilityStatus
+            android:id="@+id/participant_availability"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/wire__margin__huge"
+            android:layout_below="@+id/fl_participant_layout"
+            android:visibility="gone"/>
+
     </RelativeLayout>
+
+
 
     <!-- Footer with left & right actions -->
     <com.waz.zclient.views.menus.FooterMenu

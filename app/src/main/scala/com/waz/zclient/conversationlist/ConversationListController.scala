@@ -17,14 +17,18 @@
  */
 package com.waz.zclient.conversationlist
 
+import com.waz.api.impl.Availability
 import com.waz.model._
 import com.waz.service.ZMessaging
 import com.waz.threading.SerialDispatchQueue
 import com.waz.utils.events.{AggregatingSignal, EventContext, EventStream, Signal}
 import com.waz.zclient.conversationlist.ConversationListController.{LastMessageCache, MembersCache}
+import com.waz.zclient.utils.{UiStorage, UserSignal}
 import com.waz.zclient.views.conversationlist.ConversationAvatarView
 import com.waz.zclient.{Injectable, Injector}
-
+import com.waz.utils._
+import com.waz.zclient.controllers.UserAccountsController
+import com.waz.ZLog.ImplicitTag._
 import scala.collection.mutable
 
 class ConversationListController(implicit inj: Injector, ec: EventContext) extends Injectable {
@@ -36,6 +40,22 @@ class ConversationListController(implicit inj: Injector, ec: EventContext) exten
   def members(conv: ConvId) = membersCache.flatMap(_.apply(conv))
 
   def lastMessage(conv: ConvId) = lastMessageCache.flatMap(_.apply(conv))
+
+  lazy val userAccountsController = inject[UserAccountsController]
+  implicit val uiStorage = inject[UiStorage]
+
+  // the checks here ensure that Availability will be other than None only when both the current user
+  // and the other user belong to teams, and we're asking about a one-to-one conversation
+  def availability(conv: ConvId): Signal[Availability] = for {
+    currentUser <- userAccountsController.currentUser
+    isInTeam = currentUser.exists(_.teamId.nonEmpty)
+    memberIds <- if (isInTeam) members(conv) else Signal.const(Seq.empty)
+    otherUser <- if (memberIds.size == 1) userData(memberIds.headOption) else Signal.const(Option.empty[UserData])
+  } yield
+    if (otherUser.exists(_.teamId.nonEmpty)) otherUser.fold[Availability](Availability.None)(_.availability)
+    else Availability.None
+
+  private def userData(id: Option[UserId]) = id.fold2(Signal.const(Option.empty[UserData]), uid => UserSignal(uid).map(Option(_)))
 }
 
 object ConversationListController {

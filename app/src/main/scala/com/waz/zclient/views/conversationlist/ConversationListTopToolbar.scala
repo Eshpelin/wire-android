@@ -23,22 +23,27 @@ import android.view.View
 import android.view.View.OnClickListener
 import android.widget.{FrameLayout, ImageView}
 import com.waz.ZLog
+import com.waz.api.impl.Availability
+import com.waz.model.UserData
 import com.waz.service.ZMessaging
 import com.waz.utils.NameParts
 import com.waz.utils.events.{EventStream, Signal}
+import com.waz.zclient.adapters.ConversationListAdapter
 import com.waz.zclient.controllers.UserAccountsController
 import com.waz.zclient.drawables.{ListSeparatorDrawable, TeamIconDrawable}
+import com.waz.zclient.messages.UsersController
 import com.waz.zclient.ui.text.TypefaceTextView
 import com.waz.zclient.ui.views.CircleView
 import com.waz.zclient.utils.ContextUtils._
 import com.waz.zclient.utils.{RichView, UiStorage, UserSignal}
-import com.waz.zclient.views.GlyphButton
+import com.waz.zclient.views.{AvailabilityStatus, GlyphButton}
 import com.waz.zclient.{R, ViewHelper}
-
 
 abstract class ConversationListTopToolbar(val context: Context, val attrs: AttributeSet, val defStyleAttr: Int) extends FrameLayout(context, attrs, defStyleAttr) with ViewHelper {
 
   private implicit val logTag = ZLog.logTagFor[ConversationListTopToolbar]
+
+  private lazy val usersController = inject [UsersController]
 
   inflate(R.layout.view_conv_list_top)
 
@@ -74,6 +79,17 @@ abstract class ConversationListTopToolbar(val context: Context, val attrs: Attri
     } else {
       separatorDrawable.animateExpand()
     }
+  }
+
+  def setTitle(mode: ConversationListAdapter.ListMode, currentUser: Option[UserData]): Unit = (mode, currentUser) match {
+    case (ConversationListAdapter.Normal, Some(user)) if user.teamId.nonEmpty && user.availability != Availability.None =>
+      title.setText(user.displayName)
+      title.setCompoundDrawablesWithIntrinsicBounds(AvailabilityStatus.availabilityIds(user.availability).iconId, 0, 0, 0)
+      title.onClick { AvailabilityStatus.showNewAvailabilityDialog(usersController) }
+    case (mode, _) =>
+      title.setText(mode.nameId)
+      title.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
+      title.setOnClickListener(null)
   }
 
 }

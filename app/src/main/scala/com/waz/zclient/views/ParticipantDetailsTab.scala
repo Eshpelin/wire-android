@@ -27,6 +27,7 @@ import com.waz.model.UserId
 import com.waz.service.ZMessaging
 import com.waz.threading.Threading
 import com.waz.utils.events.Signal
+import com.waz.zclient.messages.UsersController
 import com.waz.zclient.ui.text.TypefaceTextView
 import com.waz.zclient.utils.UiStorage
 import com.waz.zclient.views.images.ImageAssetImageView
@@ -40,9 +41,12 @@ class ParticipantDetailsTab(val context: Context, val attrs: AttributeSet, val d
   inflate(R.layout.single_participant_tab_details)
 
   private implicit val uiStorage = inject[UiStorage]
+  private lazy val usersController = inject[UsersController]
+
   private val imageAssetImageView = findById[ImageAssetImageView ](R.id.iaiv__single_participant)
   private val footerMenu = findById[FooterMenu](R.id.fm__footer)
   private val guestIndicationText = findById[TypefaceTextView](R.id.participant_guest_indicator)
+  private val availabilityStatus = findById[AvailabilityStatus](R.id.participant_availability)
 
   imageAssetImageView.setDisplayType(ImageAssetImageView.DisplayType.CIRCLE)
   setOrientation(LinearLayout.VERTICAL)
@@ -63,6 +67,8 @@ class ParticipantDetailsTab(val context: Context, val attrs: AttributeSet, val d
       guestIndicationText.setVisibility(View.GONE)
       guestIndicationText.setText("")
   }
+
+  userId.flatMap(usersController.availability).on(Threading.Ui) { av => availabilityStatus.set(av, false) }
 
   def setUser(user: User): Unit = {
     Option(user).fold{

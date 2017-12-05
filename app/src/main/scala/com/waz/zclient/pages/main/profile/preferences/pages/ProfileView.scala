@@ -29,7 +29,7 @@ import android.view.View.OnClickListener
 import android.widget.{ImageView, LinearLayout}
 import com.waz.ZLog
 import com.waz.ZLog.ImplicitTag._
-import com.waz.api.impl.AccentColor
+import com.waz.api.impl.{AccentColor, Availability}
 import com.waz.model.AccountData
 import com.waz.model.otr.Client
 import com.waz.service.ZMessaging
@@ -37,11 +37,12 @@ import com.waz.service.tracking.TrackingService
 import com.waz.threading.Threading
 import com.waz.utils.events.{EventContext, EventStream, Signal}
 import com.waz.zclient._
+import com.waz.zclient.messages.UsersController
 import com.waz.zclient.pages.main.profile.preferences.views.TextButton
-import com.waz.zclient.tracking.{GlobalTrackingController, OpenedManageTeam}
+import com.waz.zclient.tracking.OpenedManageTeam
 import com.waz.zclient.ui.text.TypefaceTextView
 import com.waz.zclient.utils.{BackStackKey, BackStackNavigator, RichView, StringUtils, UiStorage, UserSignal, ZTimeFormatter}
-import com.waz.zclient.views.ImageAssetDrawable
+import com.waz.zclient.views.{AvailabilityStatus, ImageAssetDrawable}
 import com.waz.zclient.views.ImageAssetDrawable.{RequestBuilder, ScaleType}
 import com.waz.zclient.views.ImageController.{ImageSource, WireImage}
 import org.threeten.bp.{LocalDateTime, ZoneId}
@@ -51,6 +52,7 @@ trait ProfileView {
   val onManageTeamClick: EventStream[Unit]
 
   def setUserName(name: String): Unit
+  def setAvailability(availability: Availability): Unit
   def setHandle(handle: String): Unit
   def setProfilePictureDrawable(drawable: Drawable): Unit
   def setAccentColor(color: Int): Unit
@@ -67,9 +69,11 @@ class ProfileViewImpl(context: Context, attrs: AttributeSet, style: Int) extends
   inflate(R.layout.preferences_profile_layout)
 
   val navigator = inject[BackStackNavigator]
+  private lazy val usersController = inject [UsersController]
 
   val userNameText = findById[TypefaceTextView](R.id.profile_user_name)
   val userPicture = findById[ImageView](R.id.profile_user_picture)
+  val userAvailability = findById[AvailabilityStatus](R.id.profile_user_availability)
   val userHandleText = findById[TypefaceTextView](R.id.profile_user_handle)
   val teamNameText = findById[TypefaceTextView](R.id.profile_user_team)
   val teamDivider = findById[View](R.id.settings_team_divider)
@@ -100,6 +104,8 @@ class ProfileViewImpl(context: Context, attrs: AttributeSet, style: Int) extends
   })
 
   override def setUserName(name: String): Unit = userNameText.setText(name)
+
+  override def setAvailability(availability: Availability): Unit = userAvailability.set(availability, true)
 
   override def setHandle(handle: String): Unit = userHandleText.setText(handle)
 
@@ -218,9 +224,10 @@ class ProfileViewController(view: ProfileView)(implicit inj: Injector, ec: Event
   view.setProfilePictureDrawable(new ImageAssetDrawable(selfPicture, scaleType = ScaleType.CenterInside, request = RequestBuilder.Round))
 
   self.on(Threading.Ui) { self =>
-      view.setAccentColor(AccentColor(self.accent).getColor())
-      self.handle.foreach(handle => view.setHandle(StringUtils.formatHandle(handle.string)))
-      view.setUserName(self.getDisplayName)
+    view.setAccentColor(AccentColor(self.accent).getColor())
+    self.handle.foreach(handle => view.setHandle(StringUtils.formatHandle(handle.string)))
+    view.setUserName(self.getDisplayName)
+    view.setAvailability(self.availability)
   }
 
   team.on(Threading.Ui) { team => view.setTeamName(team.map(_.name)) }

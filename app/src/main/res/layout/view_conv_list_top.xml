@@ -32,6 +32,7 @@
         app:w_font="@string/wire__typeface__medium"
         android:textColor="@color/white"
         android:visibility="gone"
+        android:drawablePadding="@dimen/wire__padding__8"
         />
 
     <FrameLayout

@@ -57,6 +57,7 @@
                 android:layout_marginTop="@dimen/conversation_list__row_title__margin_top"
                 android:layout_marginEnd="@dimen/conversation_list__row__side_padding"
                 android:layout_marginStart="@dimen/conversation_list__row__zero"
+                android:drawablePadding="@dimen/wire__padding__8"
                 android:gravity="center_vertical"
                 android:layout_toStartOf="@+id/conversation_badge"
                 android:ellipsize="end"
